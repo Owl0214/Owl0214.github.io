@@ -1,0 +1,733 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>DevOps实战之部署GitLab</title>
+    <url>/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2GitLab/</url>
+    <content><![CDATA[<h2 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h2><ol>
+<li>搭建Redis服务</li>
+<li>搭建PostgreSQL服务</li>
+<li>搭建Gitlab服务并配置LDAP登录</li>
+</ol>
+<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3></li>
+<li>postgres:13.2</li>
+<li>redis:6.2.3</li>
+<li>gitlab/gitlab-ce:13.11.4-ce.0</li>
+</ul>
+<p>镜像说明：因之前部署了sonarqube，使用了postgres，所以此处使用的镜像版本，与部署Sonar的相同，网上帖子中，普遍使用的gitlab、redis、postgresql均为samessrsbn的版本，我均选择了各组件的官方镜像。此处也可以复用sonar已经部署的postgres，而不用另外创建。</p>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="官方部署方式"><a href="#官方部署方式" class="headerlink" title="官方部署方式"></a>官方部署方式</h3><p><a href="https://docs.gitlab.com/charts/">官方文档</a>推荐使用Helm安装部署，但会安装很多如Grafana、Prometheus等附加组件。</p>
+<h3 id="自定义资源清单"><a href="#自定义资源清单" class="headerlink" title="自定义资源清单"></a>自定义资源清单</h3><p>只部署了postgres、redis和gitlab，其他组件，有需要时，可自定义清单文件进行配置。其中部署gitlab时，需要手动创建共享存储挂载卷目录<code>/usr/nfs/data/gitlab/data</code>、<code>/usr/nfs/data/gitlab/config</code>、<code>/usr/nfs/data/gitlab/log</code></p>
+<p><a href="https://github.com/Owl0214/DevOps/tree/main/gitlab">gitlab资源清单</a></p>
+<h3 id="配置LDAP"><a href="#配置LDAP" class="headerlink" title="配置LDAP"></a>配置LDAP</h3><p>修改配置文件gitlab.rb，容器内路径为/etc/gitlab，容器外为nfs对应目录。修改后，重启pod或在容器内执行<code>gitlab-ctl reconfigure</code>。此处提供两种配置方式，两种仅格式不同，第一种为<a href="https://docs.gitlab.com/13.11/ee/administration/auth/ldap/index.html">官方示例</a>格式：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="string">gitlab_rails[&#x27;ldap_enabled&#x27;]</span> <span class="string">=</span> <span class="literal">true</span></span><br><span class="line"><span class="string">gitlab_rails[&#x27;prevent_ldap_sign_in&#x27;]</span> <span class="string">=</span> <span class="literal">false</span></span><br><span class="line"></span><br><span class="line"><span class="string">gitlab_rails[&#x27;ldap_servers&#x27;]</span> <span class="string">=</span> &#123;</span><br><span class="line"><span class="string">&#x27;main&#x27;</span> <span class="string">=&gt;</span> &#123;</span><br><span class="line">  <span class="string">&#x27;label&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;LDAP&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;host&#x27;</span> <span class="string">=&gt;</span>  <span class="string">&#x27;10.0.38.82&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;port&#x27;</span> <span class="string">=&gt;</span> <span class="number">30423</span>,</span><br><span class="line">  <span class="string">&#x27;uid&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;cn&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;encryption&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;plain&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;verify_certificates&#x27;</span> <span class="string">=&gt;</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="string">&#x27;bind_dn&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;cn=admin,dc=example,dc=org&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;password&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;admin&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;verify_certificates&#x27;</span> <span class="string">=&gt;</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="string">&#x27;tls_options&#x27;</span> <span class="string">=&gt;</span> &#123;</span><br><span class="line">    <span class="string">&#x27;ca_file&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;ssl_version&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;ciphers&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;cert&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;key&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&#x27;timeout&#x27;</span> <span class="string">=&gt;</span> <span class="number">10</span>,</span><br><span class="line">  <span class="string">&#x27;active_directory&#x27;</span> <span class="string">=&gt;</span> <span class="literal">true</span>,</span><br><span class="line">  <span class="string">&#x27;allow_username_or_email_login&#x27;</span> <span class="string">=&gt;</span> <span class="literal">false</span>,</span><br><span class="line">  <span class="string">&#x27;block_auto_created_users&#x27;</span> <span class="string">=&gt;</span> <span class="literal">false</span>,</span><br><span class="line">  <span class="string">&#x27;base&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;dc=example,dc=com&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;user_filter&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;attributes&#x27;</span> <span class="string">=&gt;</span> &#123;</span><br><span class="line">    <span class="string">&#x27;username&#x27;</span> <span class="string">=&gt;</span> [<span class="string">&#x27;uid&#x27;</span>, <span class="string">&#x27;userid&#x27;</span>, <span class="string">&#x27;sAMAccountName&#x27;</span>],</span><br><span class="line">    <span class="string">&#x27;email&#x27;</span> <span class="string">=&gt;</span> [<span class="string">&#x27;mail&#x27;</span>, <span class="string">&#x27;email&#x27;</span>, <span class="string">&#x27;userPrincipalName&#x27;</span>],</span><br><span class="line">    <span class="string">&#x27;name&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;cn&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;first_name&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;givenName&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;last_name&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;sn&#x27;</span></span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="string">&#x27;lowercase_usernames&#x27;</span> <span class="string">=&gt;</span> <span class="literal">false</span>,</span><br><span class="line">  <span class="comment"># EE Only</span></span><br><span class="line">  <span class="string">&#x27;group_base&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;admin_group&#x27;</span> <span class="string">=&gt;</span> <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;external_groups&#x27;</span> <span class="string">=&gt;</span> [],</span><br><span class="line">  <span class="string">&#x27;sync_ssh_keys&#x27;</span> <span class="string">=&gt;</span> <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>或</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment">## LDAP Settings</span></span><br><span class="line"><span class="comment">##! Docs: https://docs.gitlab.com/omnibus/settings/ldap.html</span></span><br><span class="line"><span class="comment">##! **Be careful not to break the indentation in the ldap_servers block. It is</span></span><br><span class="line"><span class="comment">##!   in yaml format and the spaces must be retained. Using tabs will not work.**</span></span><br><span class="line"></span><br><span class="line"><span class="string">gitlab_rails[&#x27;ldap_enabled&#x27;]</span> <span class="string">=</span> <span class="literal">true</span></span><br><span class="line"><span class="string">gitlab_rails[&#x27;prevent_ldap_sign_in&#x27;]</span> <span class="string">=</span> <span class="literal">false</span></span><br><span class="line"></span><br><span class="line"><span class="comment">##! **remember to close this block with &#x27;EOS&#x27; below**</span></span><br><span class="line"><span class="string">gitlab_rails[&#x27;ldap_servers&#x27;]</span> <span class="string">=</span> <span class="string">YAML.load</span> <span class="string">&lt;&lt;-&#x27;EOS&#x27;</span></span><br><span class="line">  <span class="attr">main:</span> <span class="comment"># &#x27;main&#x27; is the GitLab &#x27;provider ID&#x27; of this LDAP server</span></span><br><span class="line">    <span class="attr">label:</span> <span class="string">&#x27;LDAP&#x27;</span></span><br><span class="line">    <span class="attr">host:</span> <span class="string">&#x27;10.0.38.82&#x27;</span></span><br><span class="line">    <span class="attr">port:</span> <span class="number">30423</span></span><br><span class="line">    <span class="attr">uid:</span> <span class="string">&#x27;cn&#x27;</span></span><br><span class="line">    <span class="attr">bind_dn:</span> <span class="string">&#x27;cn=admin,dc=example,dc=org&#x27;</span></span><br><span class="line">    <span class="attr">password:</span> <span class="string">&#x27;admin&#x27;</span></span><br><span class="line">    <span class="attr">encryption:</span> <span class="string">&#x27;plain&#x27;</span> <span class="comment"># &quot;start_tls&quot; or &quot;simple_tls&quot; or &quot;plain&quot;</span></span><br><span class="line">    <span class="attr">verify_certificates:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">smartcard_auth:</span> <span class="literal">false</span></span><br><span class="line">    <span class="attr">active_directory:</span> <span class="literal">true</span></span><br><span class="line">    <span class="attr">allow_username_or_email_login:</span> <span class="literal">false</span></span><br><span class="line">    <span class="attr">lowercase_usernames:</span> <span class="literal">false</span></span><br><span class="line">    <span class="attr">block_auto_created_users:</span> <span class="literal">false</span></span><br><span class="line">    <span class="attr">base:</span> <span class="string">&#x27;dc=example,dc=org&#x27;</span></span><br><span class="line">    <span class="attr">user_filter:</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="comment">## EE only</span></span><br><span class="line">    <span class="attr">group_base:</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="attr">admin_group:</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="attr">sync_ssh_keys:</span> <span class="literal">false</span></span><br><span class="line"><span class="string">EOS</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="访问"><a href="#访问" class="headerlink" title="访问"></a>访问</h2><p>访问页面，认证窗口处，显示LDAP和Standard两种登录认证方式。</p>
+<p><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2GitLab/login.png" alt="1"></p>
+]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>gitlab</tag>
+        <tag>k8s</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>缓存淘汰算法-LRU</title>
+    <url>/2021/06/09/Algorithm/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95-LRU/</url>
+    <content><![CDATA[<h1 id="链表法"><a href="#链表法" class="headerlink" title="链表法"></a>链表法</h1><p>维护一个单链表，越靠近链表尾部的结点是越早之前访问的。当有一个新的数据被访问时，从链表头开始顺序遍历链表。</p>
+<ol>
+<li>如果此数据之前已经被缓存在链表中了，我们遍历得到这个数据对应的结点，并将其从原来的位置删除，然后再插入到链表的头部。</li>
+<li>如果此数据没有在缓存链表中，又可以分为两种情况：<ul>
+<li>如果此时缓存未满，则将此结点直接插入到链表的头部；</li>
+<li>如果此时缓存已满，则链表尾结点删除，将新的数据结点插入链表的头部。</li>
+</ul>
+</li>
+</ol>
+<p><img src="/2021/06/09/Algorithm/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95-LRU/LRU-single-linkedlist.jpg"></p>
+<h2 id="复杂度分析"><a href="#复杂度分析" class="headerlink" title="复杂度分析"></a>复杂度分析</h2><p>无论访问的数据是否在链表中已存在，都需要遍历链表确认一遍。时间复杂度为O(n)</p>
+<ol>
+<li>如果节点在链表中存在。将其从原来位置删除和再插入到链表头部的时间复杂度均为O(1)。</li>
+<li>如果节点在链表中不存在。链表未满时，直接做链表的插入操作，时间复杂度O(1)。链表满时，先删除链表尾结点，时间复杂度O(1)。再做插入操作，时间复杂度也是O(1)。</li>
+</ol>
+<p>均摊时间复杂度为O(n)</p>
+<p>使用了除链表本身外的length和capacity来表示当前有多少个节点和一共有多少个节点，空间复杂度应为为O(1)</p>
+<h1 id="链表-散列表法"><a href="#链表-散列表法" class="headerlink" title="链表+散列表法"></a>链表+散列表法</h1><p>维护一个双向链表和一个哈希表。</p>
+<p>双向链表用来维护数据，并实现LRU算法。Hash表用来降低时间复杂度。</p>
+<ol>
+<li>如果节点在链表中不存在，则在链表中新增节点，并计算key的哈希值，将其放到hashmap中，hash表中存放该节点的指针。</li>
+<li>如果节点存在，则在链表中，将其从原来的位置删除，再插入到链表头部。</li>
+<li>淘汰时，删除链表尾结点，在链表头部插入新元素。</li>
+</ol>
+<p><img src="/2021/06/09/Algorithm/%E7%BC%93%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95-LRU/LRU-hash-doublelinklist.png"></p>
+<h2 id="复杂度分析-1"><a href="#复杂度分析-1" class="headerlink" title="复杂度分析"></a>复杂度分析</h2><p><strong>查询时：</strong></p>
+<p>如果数据量较小的话，理论上来说，如果n个数据平均散列到m个槽上，则每个槽上的链表长度为k=n/m。时间复杂度为O(k)。</p>
+<p>如果数据量较大的话，均匀分布下，哈希表的查询复杂度为O(1)。链表平均分布的情况下，查询时间复杂度为O(k)。均摊后，时间复杂度为O(1)。</p>
+<p><strong>插入和删除操作时：</strong></p>
+<p>因为使用了哈希表，哈希表中存放了双向链表的节点地址，所以访问链表节点的时间复杂度由O(n)，降低到了O(1)。而双向链表的插入和删除操作的时间复杂度均为O(1)。所以均摊后，时间复杂度为O(1)</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><p><a href="https://leetcode-cn.com/problems/lru-cache-lcci/">力扣 16.25. LRU 缓存</a><br><a href="https://time.geekbang.org/column/article/64858">GeekTime 数据结构与算法之美 - 20 | 散列表（下）</a><br><a href="https://time.geekbang.org/column/article/41013">GeekTime 数据结构与算法之美 - 6 | 链表（上）</a><br><a href="https://github.com/Owl0214/algorithm/tree/main/LRU">Demo传送门</a></p>
+]]></content>
+      <categories>
+        <category>Algorithm</category>
+      </categories>
+      <tags>
+        <tag>链表</tag>
+        <tag>散列表</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DevOps实战之部署Jenkins</title>
+    <url>/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/</url>
+    <content><![CDATA[<h2 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h2><ol>
+<li>搭建Jenkins服务</li>
+<li>配置LDAP登录</li>
+</ol>
+<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3>jenkins/jenkins:lts-jdk11</li>
+</ul>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="创建NFS"><a href="#创建NFS" class="headerlink" title="创建NFS"></a>创建NFS</h3><h3 id="资源清单"><a href="#资源清单" class="headerlink" title="资源清单"></a>资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/jenkins">jenkins资源清单</a></p>
+<h3 id="启动Jenkins"><a href="#启动Jenkins" class="headerlink" title="启动Jenkins"></a>启动Jenkins</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd ~/jenkins</span><br><span class="line">kubectl apply -f .</span><br></pre></td></tr></table></figure>
+
+<h3 id="访问Web页面"><a href="#访问Web页面" class="headerlink" title="访问Web页面"></a>访问Web页面</h3><p>访问入口：http://[NodeIp]:30002/</p>
+<p><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/first-visit.png"></p>
+<p>初次访问时，需要使用initialAdminPassword中的字符串进行登录，由于配置了共享存储，可不用进入容器中查询，直接到相应的挂载目录下查找。</p>
+<p><code>cat [共享存储路径]/secrets/initialAdminPassword</code></p>
+<p>安装推荐插件，或自定义选择插件安装。<br><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/install-tools.png"></p>
+<h2 id="配置ldap登录"><a href="#配置ldap登录" class="headerlink" title="配置ldap登录"></a>配置ldap登录</h2><h3 id="创建LDAP组和用户"><a href="#创建LDAP组和用户" class="headerlink" title="创建LDAP组和用户"></a>创建LDAP组和用户</h3><ol>
+<li>使用cn=admin,dc=example,dc=org登录LDAP</li>
+<li>创建Posix Group，ldap</li>
+<li>在Posix Group下创建User Account，admin</li>
+</ol>
+<h3 id="配置Jenkins"><a href="#配置Jenkins" class="headerlink" title="配置Jenkins"></a>配置Jenkins</h3><p>管理员登录jenkins后，进入<strong>Manage Jenkins</strong>，点击<strong>Security</strong>下的<strong>Configure Global Security</strong>。<br><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/manage-jenkins.png"></p>
+<p>在<strong>Configure Global Security</strong>页面下，配置安全域，选择LDAP方式。<br><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/safe.png"></p>
+<h4 id="配置详细信息"><a href="#配置详细信息" class="headerlink" title="配置详细信息"></a>配置详细信息</h4><ol>
+<li>Server: LDAP服务器地址，使用ldap的Service名称+端口号<code>ldap://ldap-service:389</code>。因创建的ldap的Service类型是NodePort，也可以使用节点ip:port。</li>
+<li>User search base: <code>dc=example,dc=org</code></li>
+<li>User search filter: <code>uid=&#123;0&#125;</code></li>
+<li>Group search base: <code>dc=example,dc=org</code></li>
+<li>Manager DN: <code>cn=admin,dc=example,dc=org</code></li>
+<li>Manager Password: <code>admin</code></li>
+</ol>
+<p><strong>配置完LDAP相关信息后，点击Test LDAP settings</strong><br><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Jenkins/test-success.png"></p>
+<h4 id="配置LDAP后无法登录Jenkins问题"><a href="#配置LDAP后无法登录Jenkins问题" class="headerlink" title="配置LDAP后无法登录Jenkins问题"></a>配置LDAP后无法登录Jenkins问题</h4><p>由于配置不当导致Jenkins无法登录时，可以修改config.xml，去除ldap认证</p>
+<ol>
+<li>cd到NFS挂载的路径下，备份config.xml</li>
+<li>在配置文件中找到</li>
+</ol>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">securityRealm</span> <span class="attr">class</span>=<span class="string">&quot;hudson.security.LDAPSecurityRealm&quot;</span> <span class="attr">plugin</span>=<span class="string">&quot;ldap@1.20&quot;</span>&gt;</span></span><br><span class="line">  ……</span><br><span class="line"><span class="tag">&lt;/<span class="name">securityRealm</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>并将其修改为</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">securityRealm</span> <span class="attr">class</span>=<span class="string">&quot;hudson.security.HudsonPrivateSecurityRealm&quot;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">disableSignup</span>&gt;</span>false<span class="tag">&lt;/<span class="name">disableSignup</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">enableCaptcha</span>&gt;</span>false<span class="tag">&lt;/<span class="name">enableCaptcha</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">securityRealm</span>&gt;</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>Jenkins</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DevOps实战之部署Nexus</title>
+    <url>/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/</url>
+    <content><![CDATA[<h2 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h2><ol>
+<li>搭建Nexus服务</li>
+<li>配置LDAP登录</li>
+</ol>
+<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3>sonatype/nexus3:3.30.1</li>
+</ul>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="资源清单"><a href="#资源清单" class="headerlink" title="资源清单"></a>资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/nexus">资源清单</a></p>
+<h3 id="访问"><a href="#访问" class="headerlink" title="访问"></a>访问</h3><p>因配置了Ingress，故需要在客户端host文件中，配置相应的域名解析如:win10下，修改C:\Windows\System32\drivers\etc\hosts文件，添加<code>xx.xx.xx.xx nexus.xxx.com</code>，该域名与Ingress中的配置相同。</p>
+<p>浏览器访问<a href="http://nexus.xxx.com/">http://nexus.xxx.com</a> 即可访问nexu页面</p>
+<h2 id="配置LDAP"><a href="#配置LDAP" class="headerlink" title="配置LDAP"></a>配置LDAP</h2><p><a href="https://help.sonatype.com/repomanager3/system-configuration/user-authentication/ldap">官网文档配置参照</a></p>
+<h3 id="登录Nexus"><a href="#登录Nexus" class="headerlink" title="登录Nexus"></a>登录Nexus</h3><p>admin的初始化密码位于/nexus-data/admin.password，可在共享存储路径下查看admin.password文件。<br><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/login.png"></p>
+<p>初次登录页面时，会提示修改密码。然后开启匿名访问权限。<br><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/AnonymousAccess.png"></p>
+<h3 id="修改Configuration"><a href="#修改Configuration" class="headerlink" title="修改Configuration"></a>修改Configuration</h3><p>进入配置管理页面-&gt;Security-&gt;LDAP，点击Create connection</p>
+<p><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/config.png"></p>
+<h4 id="连接配置"><a href="#连接配置" class="headerlink" title="连接配置"></a>连接配置</h4><p>配置LDAP连接，点击Verify Connection。连接成功后提示Connection to LDAP server verified: ldap://xx.xx.xx.xx:xxxx</p>
+<p><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/ldap-connection-config.png"></p>
+<h4 id="用户、组过滤配置"><a href="#用户、组过滤配置" class="headerlink" title="用户、组过滤配置"></a>用户、组过滤配置</h4><p>配置完LDAP连接后，点击next配置用户和组。<br>在Configuration template的下拉框中，定义了配置的模板：</p>
+<ul>
+<li>Active Directory: </li>
+<li>Generic Ldap Server:</li>
+<li>Posix with Dynamic Groups:</li>
+<li>Posix with Static Groups:</li>
+</ul>
+<p>配置用户组过滤条件后，点击Verify usermapping,会弹出用户列表。点击Verify Login，输入LDAP中的用户名密码，即可验证LDAP中的用户登录Nexus<br><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/user-group-config.png"></p>
+<h2 id="角色配置"><a href="#角色配置" class="headerlink" title="角色配置"></a>角色配置</h2><p>Nexus创建的用户或LDAP的用户，需由管理员分配角色。</p>
+<p>点击Security-&gt;Users，通过Source查看LDAP的用户列表。<br><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/config-role.png"></p>
+<p>双击用户列表中的用户，进入配置页面，选择相应的角色进行保存。<br><img src="/2021/05/22/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2Nexus/user-role-bind.png"></p>
+]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>Nexus</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DevOps实战之部署SonarQube</title>
+    <url>/2021/05/13/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2SonarQube/</url>
+    <content><![CDATA[<h2 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h2><ol>
+<li>搭建PostgreSQL数据库</li>
+<li>搭建SonarQube</li>
+<li>配置LDAP登录</li>
+</ol>
+<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3></li>
+<li>postgres 13.2</li>
+<li>sonarqube 8.9.0-community</li>
+</ul>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="创建NFS-Provisioner"><a href="#创建NFS-Provisioner" class="headerlink" title="创建NFS Provisioner"></a>创建NFS Provisioner</h3><h3 id="创建PostgreSQL-和-SonarQube资源清单"><a href="#创建PostgreSQL-和-SonarQube资源清单" class="headerlink" title="创建PostgreSQL 和 SonarQube资源清单"></a>创建PostgreSQL 和 SonarQube资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/sonar">资源清单</a></p>
+<h3 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd ~/sonar</span><br><span class="line">kubectl apply -f .</span><br></pre></td></tr></table></figure>
+
+<h3 id="访问web页面"><a href="#访问web页面" class="headerlink" title="访问web页面"></a>访问web页面</h3><p>访问 http://[nodeIp]:30003</p>
+<p>默认用户名: admin</p>
+<p>默认密码: admin</p>
+<p>首次登录后会要求修改密码</p>
+<h2 id="配置ldap"><a href="#配置ldap" class="headerlink" title="配置ldap"></a>配置ldap</h2><p>在挂载卷路径下的conf文件夹中，新建或修改SonarQube的配置文件sonar.properties</p>
+<p>根据<a href="https://docs.sonarqube.org/latest/instance-administration/delegated-auth">官方示例及相关配置项说明</a>将其修改为：</p>
+<figure class="highlight properties"><table><tr><td class="code"><pre><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># General Configuration</span></span><br><span class="line"><span class="meta">sonar.security.realm</span>=<span class="string">LDAP</span></span><br><span class="line"><span class="comment"># 这里使用了svc的名称，可以换成ip</span></span><br><span class="line"><span class="meta">ldap.url</span>=<span class="string">ldap://ldap-service:389</span></span><br><span class="line"><span class="comment"># 管理员的账号密码</span></span><br><span class="line"><span class="meta">ldap.bindDn</span>=<span class="string">cn=admin,dc=example,dc=org</span></span><br><span class="line"><span class="meta">ldap.bindPassword</span>=<span class="string">admin</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># User Configuration</span></span><br><span class="line"><span class="comment"># 用户的搜索路径，LDAP中用户的根节点</span></span><br><span class="line"><span class="meta">ldap.user.baseDn</span>=<span class="string">cn=ldap,dc=example,dc=org</span></span><br><span class="line"><span class="comment"># 制定搜索规则</span></span><br><span class="line"><span class="comment">#ldap.user.request=(&amp;(objectClass=inetOrgPerson)(uid=$&#123;login&#125;))</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># Group Configuration</span></span><br><span class="line"><span class="comment"># 用户组的搜索路径，LDAP中组的根节点</span></span><br><span class="line"><span class="meta">ldap.group.baseDn</span>=<span class="string">dc=example,dc=org</span></span><br><span class="line"><span class="comment"># 制定搜索规则</span></span><br><span class="line"><span class="comment">#ldap.group.request=(&amp;(objectClass=posixGroup)(gid=&#123;dn&#125;))</span></span><br></pre></td></tr></table></figure>
+
+<p>修改后，使用<code>kubectl delete pod </code>删除sonarqube的Pod，重启sonarqube服务。使用ldap中的用户和密码测试登录是否成功。</p>
+]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>Sonar</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DevOps实战之部署ldap</title>
+    <url>/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/</url>
+    <content><![CDATA[<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3></li>
+<li>osixia/openldap stable</li>
+<li>osixia/phpldapadmin stable</li>
+</ul>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="创建NFS共享目录"><a href="#创建NFS共享目录" class="headerlink" title="创建NFS共享目录"></a>创建NFS共享目录</h3><ol>
+<li>创建NFS服务</li>
+<li>依次创建目录</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">mkdir /usr/nfs/data/ldapdata</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/db</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/config</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/certs</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建ldap资源清单"><a href="#创建ldap资源清单" class="headerlink" title="创建ldap资源清单"></a>创建ldap资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/ldap">ldap资源清单</a></p>
+<h3 id="启动ldap和web管理页面"><a href="#启动ldap和web管理页面" class="headerlink" title="启动ldap和web管理页面"></a>启动ldap和web管理页面</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">kubectl apply ldap-deployment.yaml</span><br><span class="line">kubectl apply ldap-service.yaml</span><br><span class="line">kubectl apply phpldapadmin-deployment.yaml</span><br><span class="line">kubectl apply phpldapadmin-service.yaml</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/ldap-svc.png"></p>
+<h3 id="访问Web页面"><a href="#访问Web页面" class="headerlink" title="访问Web页面"></a>访问Web页面</h3><p>访问http://[NodeIp]:30080/</p>
+<p>默认用户名：cn=admin,dc=example,dc=org</p>
+<p>默认密码：admin</p>
+]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>ldap</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux Namespace</title>
+    <url>/2021/08/21/Kubernetes/Docker/namespace/</url>
+    <content><![CDATA[<h1 id="Linux-Namespace"><a href="#Linux-Namespace" class="headerlink" title="Linux Namespace"></a>Linux Namespace</h1><p>Linux Namespace是一种隔离机制，它将全局系统资源包装起来，使得PID、IPC、Network、Mount、UTS、User、CGroup不再是全局性的，而是属于特定的Namespace。每个Namespace下的资源对于其他Namespace都是不可见的。</p>
+<p>一个进程可以属于多个Namespace。</p>
+<h2 id="Namespace种类"><a href="#Namespace种类" class="headerlink" title="Namespace种类"></a>Namespace种类</h2><table>
+<thead>
+<tr>
+<th>namespace 名称</th>
+<th>系统调用参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mount</td>
+<td>CLONE_NEWNS</td>
+<td>隔离一组进程看到的文件系统的挂载点，不同的命名空间可以具有不同的文件系统结构</td>
+</tr>
+<tr>
+<td>PID</td>
+<td>CLONE_NEWPID</td>
+<td>隔离进程编号，PID 命名空间的主要好处之一是容器可以在主机之间迁移，同时为容器内的进程保留相同的进程 ID。PID 命名空间还允许每个容器拥有自己的 init (PID 1)，即“所有进程的祖先”，管理各种系统初始化任务并在它们终止时回收孤立的子进程。</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>CLONE_NEWNET</td>
+<td>隔离网络设备，堆栈，端口等</td>
+</tr>
+<tr>
+<td>IPC</td>
+<td>CLONE_NEWIPC</td>
+<td>隔离进程间通信系统 IPC, POSIX 消息队列</td>
+</tr>
+<tr>
+<td>UTS</td>
+<td>CLONE_NEWUTS</td>
+<td>隔离节点名和域名</td>
+</tr>
+<tr>
+<td>User</td>
+<td>CLONE_NEWUSER</td>
+<td>隔离用户和组ID</td>
+</tr>
+<tr>
+<td>Cgroup</td>
+<td>CLONE_NEWCGROUP</td>
+<td>隔离Cgroup 根目录，可以防止信息泄露而导致cgroup目录路径外部进程可见；隔离后，Cgroup路径名是独立的，容器迁移时，防止cgroup路径名与目标系统上的路径名发生冲突;将cgroup文件系统完全隔离开，可以防止容器进程无法访问主机的cgroup目录</td>
+</tr>
+</tbody></table>
+<p>每种namespace各有自己管理的部分，<strong>对于现在 Linux 上的任意进程而言，它一定是<code>每种 namespace 的一个实例</code></strong> (<strong>就是每个进程都得归属于某个ns，ns中可以只有一个进程，也可以由多个进程共有</strong>)</p>
+<p>隔离cgroup说明：假设一个场景，有一个cgroup目录<code>/cg/1</code>，它归USER ID 9000所有，有一个进程X也归USER ID 9000所有，该进程的命名空间位于cgroup目录<code>/cg/1/2</code>。在没有cgroup命名空间的情况下，因为cgroup目录<code>/cg/1</code>由UID 9000拥有（可写）并且进程X也由UID 9000所有，进程X则既能修改<code>/cg/1</code>的文件，也能修改<code>/cg/1/2</code>的文件。通过cgroup namespace，可以防止进程X修改<code>/cg/1</code>的中的文件，因为它看不到该目录。这样可以防止进程X逃逸其ancestor cgroup的限制。</p>
+<p><strong>Linux 提供了以下主要的系统调用</strong>用于管理namespace：</p>
+<ul>
+<li>clone()：如果是纯粹只使用clone()，则会创建一个新进程；但如果我们传递一个或多个 CLONE_NEW* 标志参数给clone()，则会根据每个标志创建对应的新namespace 并且将子进程添加为其成员，达到隔离效果。</li>
+<li>setns()：允许进程加入一个已存在的 namespace 中。</li>
+<li>unshare()：允许进程（或线程）取消其执行上下文中，与其他进程（或线程）共享部分的关联，通俗点来说，也就是可以利用此系统调用来让当前的进程（或线程）移动至一个新的namespace中。</li>
+</ul>
+<h3 id="隔离IPC"><a href="#隔离IPC" class="headerlink" title="隔离IPC"></a>隔离IPC</h3><p>IPC 全称 Inter-Process Communication，是进程间通信的一种方式，IPC有管道、共享内存、信号量、消息队列、信号、套接字。</p>
+<ol>
+<li>查看主机信号量<br><img src="/2021/08/21/Kubernetes/Docker/namespace/ipcs1.png"></li>
+<li>主机上创建信号量</li>
+</ol>
+<blockquote>
+<p>ipcmk -S 10</p>
+</blockquote>
+<blockquote>
+<p>ipcs</p>
+</blockquote>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/ipcs_host.png"></p>
+<ol>
+<li>创建一个新的IPC Namespace，然后查看ns中的信号量<blockquote>
+<p>unshare –ipc</p>
+</blockquote>
+</li>
+</ol>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/ipcs_ns.png"></p>
+<h3 id="隔离UTS"><a href="#隔离UTS" class="headerlink" title="隔离UTS"></a>隔离UTS</h3><p>UTS(Unix Timesharing System)命名空间包含了运行内核的名称、版本、底层体系结构类型等信息</p>
+<blockquote>
+<p>unshare –uts<br>hostname<br>hostname test<br>hostname</p>
+</blockquote>
+<p>查看ns中的hostname和主机上的name<br>分别为<code>test</code>和<code>edunode1</code></p>
+<h3 id="隔离User"><a href="#隔离User" class="headerlink" title="隔离User"></a>隔离User</h3><p>隔离user namespace</p>
+<blockquote>
+<p>unshare –user</p>
+</blockquote>
+<p>可以通过-r参数，把新的namespace中的root用户映射成宿主机上的用户，例如，把ns中的用户映射为宿主机的root</p>
+<blockquote>
+<p>unshare –user -r root</p>
+</blockquote>
+<h3 id="隔离PID"><a href="#隔离PID" class="headerlink" title="隔离PID"></a>隔离PID</h3><blockquote>
+<p>unshare –pid</p>
+</blockquote>
+<p>观察主机上的进程<br><img src="/2021/08/21/Kubernetes/Docker/namespace/pid_host.png"></p>
+<p>观察PID namespace中的进程<br><img src="/2021/08/21/Kubernetes/Docker/namespace/pid_ns.png"></p>
+<h3 id="隔离Network"><a href="#隔离Network" class="headerlink" title="隔离Network"></a>隔离Network</h3><ol>
+<li>创建netns<blockquote>
+<p>ip netns add ns1</p>
+</blockquote>
+</li>
+</ol>
+<blockquote>
+<p>ip netns list</p>
+</blockquote>
+<ol start="2">
+<li>查看ns1中的网络，通过ip netns exec执行在ns中执行响应命令</li>
+</ol>
+<blockquote>
+<p>ip netns exec ns1 ip addr</p>
+</blockquote>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/ip_netns_ipaddr.png"></p>
+<ol start="3">
+<li>测试网络连通性<blockquote>
+<p>ip netns exec ns1 ping 10.6.8.113</p>
+</blockquote>
+</li>
+</ol>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/ip_netns_ping.png"></p>
+<h4 id="通过veth-pair与宿主机、其他ns进行网络通信"><a href="#通过veth-pair与宿主机、其他ns进行网络通信" class="headerlink" title="通过veth pair与宿主机、其他ns进行网络通信"></a>通过veth pair与宿主机、其他ns进行网络通信</h4><ol>
+<li>创建veth pair</li>
+</ol>
+<blockquote>
+<p>ip link add veth0 type veth peer name veth1</p>
+</blockquote>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/create_veth_pair.png"></p>
+<ol start="2">
+<li><p>将veth0或者veth1移动到ns1中</p>
+<blockquote>
+<p>ip link set veth1 netns ns1</p>
+</blockquote>
+</li>
+<li><p>配置ip</p>
+<blockquote>
+<p>ip netns exec ns1 ifconfig veth1 192.168.10.100/24</p>
+</blockquote>
+</li>
+</ol>
+<blockquote>
+<p>ifconfig veth0 192.168.10.101/24</p>
+</blockquote>
+<ol start="4">
+<li>将网卡启动<blockquote>
+<p>ip netns exec ns1 ifconfig veth1 up</p>
+</blockquote>
+</li>
+</ol>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/vethpeer_in_ns.png"></p>
+<blockquote>
+<p>ifconfig veth0</p>
+</blockquote>
+<p><img src="/2021/08/21/Kubernetes/Docker/namespace/vethpeer_in_host.png"></p>
+<ol start="5">
+<li>测试<blockquote>
+<p>ip netns exec ns1 ping 192.168.10.101</p>
+</blockquote>
+</li>
+</ol>
+<p>同理，可将veth peer分别放在两个netns中进行联通</p>
+<h4 id="通过bridge中转"><a href="#通过bridge中转" class="headerlink" title="通过bridge中转"></a>通过bridge中转</h4><p>实际使用中，不可能每2个不同的ns都进行一次veth pair配置，这时就需要Linux Bridge来做转发，将veth pair中的一个veth peer绑定到ns中，另一端绑定到bridge上。</p>
+<ol>
+<li>创建两个netns，和两对veth pair<blockquote>
+<p>ip netns add ns0<br>ip netns add ns1</p>
+</blockquote>
+</li>
+</ol>
+<blockquote>
+<p>ip link add veth0 type veth peer name br-veth0<br>ip link add veth1 type veth peer name br-veth1</p>
+</blockquote>
+<ol start="2">
+<li>创建bridge，并启动网桥<blockquote>
+<p>brctl addbr br0</p>
+</blockquote>
+</li>
+</ol>
+<blockquote>
+<p>ip link set br0 up</p>
+</blockquote>
+<ol start="3">
+<li>将veth pair中的一端分别加入到ns中，另一端放到bridge上</li>
+</ol>
+<p>将veth0放入ns0中，并配置ip</p>
+<blockquote>
+<p>ip link set veth0 netns ns0<br>ip netns exec ns0 ifconfig veth0 192.168.10.100/24 up<br>ip netns exec ns0 ip link set lo up</p>
+</blockquote>
+<p>将br-veth0绑定到网桥br0上，并启动br-veth0</p>
+<blockquote>
+<p>brctl addif br0 br-veth0<br>ip link set br-veth0 up</p>
+</blockquote>
+<p>将veth1放入ns1中，并配置ip，启动lo</p>
+<blockquote>
+<p>ip link set veth1 netns ns1<br>ip netns exec ns1 ifconfig veth1 192.168.10.101/24 up<br>ip netns exec ns1 ip link set lo up</p>
+</blockquote>
+<p>将br-veth1绑定到网桥br0上，并启动br-veth1</p>
+<blockquote>
+<p>brctl addif br0 br-veth1<br>ip link set br-veth1 up</p>
+</blockquote>
+<p>通过<code>brctl show</code>查看网桥<br><img src="/2021/08/21/Kubernetes/Docker/namespace/bridge.png"></p>
+<ol start="4">
+<li>连通性测试<blockquote>
+<p>ip netns exec ns0 ping 192.168.10.101<br><img src="/2021/08/21/Kubernetes/Docker/namespace/connected.png"></p>
+</blockquote>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Kubernetes</category>
+        <category>Docker</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>docker</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>cgroup</title>
+    <url>/2021/08/21/Kubernetes/Docker/cgroup/</url>
+    <content><![CDATA[<h1 id="Linux-cgroup"><a href="#Linux-cgroup" class="headerlink" title="Linux cgroup"></a>Linux cgroup</h1><p>cgroups(Control Groups)通过不同的子系统限制了不同的系统资源，每种子系统限制一种资源。每个子系统限制资源的方式都是类似的，就是把相关的一组进程分配到一个控制组中，然后通过树结构(hierarchy)进行管理。每个控制组设有自己的资源控制参数。</p>
+<p>默认情况下，系统中，所有进程位于同一个cgroup，就是根，这个cgroup享有所有的系统资源。</p>
+<p>通过cgroup文件系统可以建立一个新的cgroup，可以为其分配进程、资源等。</p>
+<p>通过<code>mount</code>查看系统中已经挂载的cgroup。cgroup的根目录是以tmpfs的性质进行挂载的，<br><img src="/2021/08/21/Kubernetes/Docker/cgroup/cgroup-mounttype.png"></p>
+<p>通过cgroup可以将定额的系统资源（如CPU、内存等）分配给特定的一组进程。cgroup的主要功能包括：</p>
+<ul>
+<li>Resource limitation：资源限制，比如限制内存使用上限</li>
+<li>Prioritization：优先级分配，通过分配CPU时间片数量及硬盘IO带宽大小，来控制进程运行的优先级</li>
+<li>Accounting：资源统计，比如CPU使用时长、内存用量等。</li>
+<li>Control：进程控制，比如挂起进程、恢复执行进程</li>
+</ul>
+<h2 id="cgroup子系统"><a href="#cgroup子系统" class="headerlink" title="cgroup子系统"></a>cgroup子系统</h2><p>cgroup本身是分层级的，一个根层下面像一棵树一样可以分很多层。每一层的cgroup文件系统目录下都有改成对应的资源配置文件。这些可以配置的文件都是cgroup子系统。</p>
+<p>通过<code>lssubsys -m</code>，可以查看cgroup的子系统。在<code>/sys/fs/cgroup</code>下有cgroup的子目录，这些子目录均为cgroup的子系统。<br><img src="/2021/08/21/Kubernetes/Docker/cgroup/cgroup-subsystem.png"></p>
+<p>cgroup包含的子系统有：</p>
+<ul>
+<li>cpu：用于控制cgroup中所有进程可以使用的CPU时间片。主要限制进程的cpu使用率</li>
+<li>cpuacct：可以生成cgroups中的进程的cpu使用报告</li>
+<li>cpuset：对于多核cpu，可以为cgroups中的进程分配单独的cpu节点或者内存节点</li>
+<li>memory：可以限制进程的memory使用量</li>
+<li>blkio：可以限制进程的块设备io</li>
+<li>devices：可以控制进程能够访问某些设备。通过提供device whilelist实现的，devices子系统通过在内核对设备访问的时候加入额外的检查实现。devices子系统本身只需要管理好设备访问列表。</li>
+<li>net_cls：可以标记cgroups中进程的网络数据包，然后可以使用tc模块(traffic control)对数据包进行控制，限制网络带宽</li>
+<li>net_prio：用来设计网络流量的优先级，对每个网络接口指定优先级</li>
+<li>freezer：可以挂起或者恢复cgroups中的进程。freezer.state可能读出的值有3种，分贝是FROZEN（已挂起）、THAWED（正常运行、已恢复）、FREEZING（该值代表cgroup中有些进程现在不能被frozen，当这些进程从该cgroup消失时，FREEZING会变成FROZEN）</li>
+<li>ns：可以使不同cgroups下面的进程使用不同的namespaces。ns子系统没有自己的控制文件，而且没有属于自己的状态信息。ns子系统实际上是提供了一种同命名空间的进程聚类的机制。具有相同命名空间的进程会在相同的cgroup分组中。</li>
+<li>hugetlb：主要针对于HugeTLB系统（大页文件系统）进行限制</li>
+<li>perf_event：对cgroup中的进程组进行性能监控</li>
+<li>pids：限制在cgroup中创建的进程数量</li>
+<li>rdma：限制cgroup中使用的rdma(Remot Direct Memory Access)</li>
+</ul>
+<h3 id="CPU子系统"><a href="#CPU子系统" class="headerlink" title="CPU子系统"></a>CPU子系统</h3><p>用于控制cgroup中所有进程可以使用的CPU时间片，cpu子系统下的cgroup目录中，存在一个cpu.shares的文件，对其写入整数值，可以控制该cgroup获得的时间片。</p>
+<p>例如，在两个相同层级的cgroup中，都将cpu.shares设置为1，那么这两个cgroup将会有相同的CPU时间。如果将其中一个cgroup中的cpu.shares设置为2，那么该cgroup中可使用CPU时间是另一个cgroup中可使用CPU时间的两倍。</p>
+<p>CPU子系统通过Linux CFS调度器(Completely Fair Scheduler)实现的，CPU子系统调度CPU访问控制有两种模式：CFS(Completely Fair Scheduler)和RTS(Real-Time Scheduler)，RTS的方式只有在进程中采用了RTS调度算法时才生效。</p>
+<h3 id="cpuacct子系统"><a href="#cpuacct子系统" class="headerlink" title="cpuacct子系统"></a>cpuacct子系统</h3><p>cpuacct子系统自动生成cgroup中任务所使用的CPU报告。</p>
+<ul>
+<li>cpuacct.usage：该group及其子group的CPU总使用时间(ns)</li>
+<li>cpuacct.stat：该group及其子group的CPU的用户态和内核态的分别使用时间(ns)</li>
+<li>cpuacct.usage_percpu：该group及其子group的CPU分别使用时间(ns)</li>
+</ul>
+<h3 id="cpuset子系统"><a href="#cpuset子系统" class="headerlink" title="cpuset子系统"></a>cpuset子系统</h3><p>为cgroup中的任务分配独立的CPU（多核系统中）和内存节点。</p>
+<ul>
+<li>cpuset.cpus：绑定该group的CPU节点，如绑定该进程可以使用0、1、2、6、8这5个CPU，写入文件数据格式是”0-2,6,8”</li>
+</ul>
+<h3 id="memory子系统"><a href="#memory子系统" class="headerlink" title="memory子系统"></a>memory子系统</h3><p>可以设定cgroup中任务使用的内存限制，并自动生成由哪些任务使用的内存资源报告。memory子系统是通过Linux的resource counter机制实现的。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">res_counter</span>&#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> usage; <span class="comment">//记录资源的当前使用量</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> max_usage; <span class="comment">//使用过的最大资源量</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> limit; <span class="comment">//资源最大限制，分配超过此限制的资源将会导致失败</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> soft_limit; <span class="comment">//资源软限制，可以超过这个值</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> failcnt; <span class="comment">//资源分配失败的次数</span></span><br><span class="line">    <span class="keyword">spinlock_t</span> lock; <span class="comment">//自旋锁</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">res_counter</span> *<span class="title">parent</span>;</span> <span class="comment">//形成资源统计组</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在<code>/sys/fs/cgroup/memory</code>下，创建文件夹<code>mkdir test</code>，即创建了一个子cgroup，子cgroup中的文件包含如下：<br><img src="/2021/08/21/Kubernetes/Docker/cgroup/cgroup-memory-newtask.png"></p>
+<ul>
+<li>cgroup.event_control：用于eventfd的接口</li>
+<li>memory.usage_in_bytes：显示当前已用的内存</li>
+<li>memory.limit_in_bytes：设置/显示当前限制的内存额度</li>
+<li>memory.failcnt：显示内存使用量达到限制值的次数</li>
+<li>memory.max_usage_in_bytes：历史内存最大使用量</li>
+<li>memory.soft_limit_in_bytes：设置/显示当前限制的内存软额度</li>
+<li>memory.stat：显示当前cgroup的内存使用情况</li>
+<li>memory.use_hierarchy：设置/显示是否将子cgroup的内存使用情况统计到当前cgroup里面</li>
+<li>memory.force_empty：触发系统立即尽可能的回收当前cgroup中可以回收的内存</li>
+<li>memory.pressure_level：设置内存压力的通知事件，配合cgroup.event_control一起使用</li>
+<li>memory.swappiness：设置和显示当前的swappiness</li>
+<li>memory.move_charge_at_immigrate：设置当进程移动到其他cgroup中时，它所占用的内存是否也随着移动过去</li>
+<li>memory.oom_control：设置/显示oom controls相关的配置</li>
+<li>memory.numa_stat：显示numa相关的内存</li>
+</ul>
+<h4 id="设置内存限制"><a href="#设置内存限制" class="headerlink" title="设置内存限制"></a>设置内存限制</h4><p>操作cgroup主要有以下3步：</p>
+<ol>
+<li>创建cgroup</li>
+<li>设置cgroup参数</li>
+<li>将进程PID写入cgroup的task</li>
+</ol>
+<p>例如设置内存限制步骤如下：</p>
+<ol>
+<li>创建新的cgroup<blockquote>
+<p>cd /sys/fs/cgroup/memory<br>mkdir test<br>cd test</p>
+</blockquote>
+</li>
+<li>设置memory.limit_in_bytes和memory.memsw.limit_in_bytes<br>memory.limit_in_bytes用于限制memeory的大小，memory.memsw.limit_in_bytes用于限制memeory+swap的大小。memory.memsw.limit_in_bytes的值应大于等于memory.limit_in_bytes<blockquote>
+<p>cat memory.limit_in_bytes</p>
+</blockquote>
+</li>
+</ol>
+<p>9223372036854771712</p>
+<blockquote>
+<p>echo 100M &gt; memory.limit_in_bytes<br>cat memory.limit_in_bytes</p>
+</blockquote>
+<p>104857600</p>
+<ol start="3">
+<li>将bash设置到tasks中，并创建一个200M的文件<blockquote>
+<p>echo $$&gt;tasks<br>dd if=/dev/zero of=/home/myfile bs=200M count=1</p>
+</blockquote>
+</li>
+</ol>
+<p>Killed</p>
+<h3 id="blkio子系统"><a href="#blkio子系统" class="headerlink" title="blkio子系统"></a>blkio子系统</h3><p>为块设备设定输入/输出限制，比如物理设备(磁盘、固态硬盘、USB等)。</p>
+<p>该子系统提供了两种控制I/O的方式：</p>
+<ol>
+<li>基于权重，每个group都可以设置一个数值，根据数值不同，系统分配响应的I/O。以下两个值同一个group中只能存在一个。<ul>
+<li>blkio.weight：一个100~1000的数值，全局的权重</li>
+<li>blkio.weight_device：一个100~1000的数值，指定设备的I/O的权重。会覆盖全局的权重值</li>
+</ul>
+</li>
+<li>基于速度，每个group都有一个最大的速度，该group的进程I/O不能大于这个速度<ul>
+<li>blkio.throttl.read_bps_device：指定该设备上的最大读速度(bytes/s)</li>
+<li>blkio.throttle.read_iops_device：指定该设备上的最大读I/O (I/O read/s);</li>
+<li>blkio.throttle.write_bps_device：指定该设备上最大写速度(bytes/s)</li>
+<li>blkio.throttle.write_iops_device：指定该设备上的最大写IO(I/O read/s)</li>
+<li>blkio.throttle.io_serviced：记录设备I/O操作总数</li>
+<li>blkio.throttle.io_service_bytes：记录设备读取总数</li>
+</ul>
+</li>
+</ol>
+<p>其他参数：</p>
+<ul>
+<li>blkio.reset_stats：对当前文件写入一个整数可重置当前所有统计数据</li>
+<li>blkio.time：指定设备的cgroup控制的I/O访问时间(ms)</li>
+<li>blkio.sectors：指定设备的扇区操作数</li>
+<li>blkio.io_service_time：指定设备的I/O工作时间(ns)</li>
+<li>blkio.io_wait_time：cgroup等待I/O的时间</li>
+<li>blkio.io_merged：被合并的I/O请求</li>
+<li>blkio.io_queued：被cgroup放到队列的I/O请求</li>
+</ul>
+<h2 id="hierarchy"><a href="#hierarchy" class="headerlink" title="hierarchy"></a>hierarchy</h2><p>一个hierarchy是一组排列在树中的cgroups，树中的每个节点都是一个进程组，系统中的每一个任务都在其中的一个cgroup中，每棵树会关联到多个subsystem。系统中可以有多棵cgroup树。</p>
+<p>通过<code>systemd-cgls</code>可已查看Linux cgroup层次结构树。可以显示指定控制组的所有成员进程及其子组和成员。例如：</p>
+<blockquote>
+<p>systemd-cgls / kubepods</p>
+</blockquote>
+<p><img src="/2021/08/21/Kubernetes/Docker/cgroup/systemd-cgls.png"></p>
+<p>系统阶段，systemd会将它在内核中找到的所有hierarchies挂载到<code>/sys/fs/cgroup</code>下的各个目录。除了<code>/sys/fs/cgroup/systemd</code>目录，其他目录都是对应的子系统。<code>/sys/fs/cgroup/systemd</code>是systemd维护自己使用的，不允许其他程序移动这个目录的内容。</p>
+<p>通过将cgroup hierarchy系统绑定到systemd单元树上，systemd可以将资源管理的设置从进程级别移动带应用程序级别。因此，可以使用systemctl指令或者修改systemd单元的配置文件来管理单元相关的资源。</p>
+<p>默认情况下，systemd会自动创建slice、scope和service三个层次结构：</p>
+<ul>
+<li>service：systemd基于单元配置文件启动的一个进程或一组进程。服务封装了指定的进程，以便它们可以作为一个集合启动和停止。服务以<code>name.service</code>的形式被命名。</li>
+<li>scope：一组外部创建的进程。Scopes封装了由任意进程通过fork()函数启动和停止的进程，然后在运行时，由systemd注册这些进行。例如，用户会话、容器和虚拟机被视为作用域。作用域以<code>name.scope</code>的形式被命名。</li>
+<li>slice：一组分层组织的单元。Slices不包含进程，他们组织了一个层级结构，其中放置了scope和service。实际的进程都包含在scope和service中。在这个层次树中，切片单元的每个名称都对应于层次结构中某个位置的路径。<code>-</code>字符用作路径组件的分隔符。切片以<code>parent-name.slice</code>的形式被命名。slice是parent的子切片。一个根切片表示为<code>-.slice</code></li>
+</ul>
+<p>服务、范围和切片单元直接映射到cgroup树中的对象。当这些单元被激活时，它们会直接映射到根据单元名称构建的 cgroup路径。例如，ex.service属于test-waldo.slice，会直接映射到<code>cgroup test.slice/test-waldo.slice/ex.service/</code>中。</p>
+<h3 id="Subsystem、Hierarchies、Control-Groups、Task的关系"><a href="#Subsystem、Hierarchies、Control-Groups、Task的关系" class="headerlink" title="Subsystem、Hierarchies、Control Groups、Task的关系"></a>Subsystem、Hierarchies、Control Groups、Task的关系</h3><ol>
+<li><p>一个hierarchy可以附加一个或者多个subsystem（同时参照规则2）。例如cpu子系统和memory子系统（或任意数量的子系统）可以附加到单个层次结构。<br><img src="/2021/08/21/Kubernetes/Docker/cgroup/RMG-rule1.png"></p>
+</li>
+<li><p>任何single subsystem（例如cpu）都不能附加到多个hierarchy上。如果第二个hierarchy没有其他的subsystem，那么就可以依附，即可以存在两个都仅有cpu依附的hierarchy；如果第二个hierarchy上依附了其他的subsystem，那么就不能依附。如图，图中的编号表示子系统所附的时间序列，因为 Hierarchy B依附了其他系统，所以cpu子系统就不能依附了。<br><img src="/2021/08/21/Kubernetes/Docker/cgroup/RMG-rule2.png"></p>
+</li>
+<li><p>每次在系统上创建新的hierarchy时，系统上所有task（进程）最初都是该层次结构的默认cgroup的成员，该cgroup称为<code>root cgroup</code>，在这个hierarchy中创建的所有<code>cgroup</code>都是这个<code>root cgroup</code>的子节点。对于创建的任何一个hierarchy，系统上每个task都可以是该层次结构中的一个cgroup的成员。</p>
+<p> 一个task可以在多个cgroup中，只要这个task所在的每个cgroup在不同的hierarchy中。如果一个task成为同一个hierarchy中第二个cgroup的成员，那么他就会从该hierarchy中的第一个cgroup中删除。</p>
+<p> 任何时候，同一个hierarchy的不同cgroup中，不会存在同一个task。</p>
+<p> 如图，如果cpu和内存子系统连接到名为cpu_mem_cg的hierarchy中，而net_cls子系统连接到名为net的hierarchy中，那么httpd进程可以是cpu_mem_cg中任何一个cgroup的成员，也可以是net中的任何一个cgroup的成员，但其不能同时存在于cpu_mem_cg中的两个cgroup中。</p>
+<p> 因为当创建第一个hierarchy时，系统上的每个task都至少是一个cgroup(root cgroup)的成员，所以，当使用cgroups时，每个task总是至少在一个cgroup中。<br> <img src="/2021/08/21/Kubernetes/Docker/cgroup/RMG-rule3.png"></p>
+</li>
+<li><p> 一个进程(task)fork出子进程时，子进程会自动继承父进程的cgroup成员。也可以将子task移动到不同的cgroup中。当fork完成，父子进程就完全独立了。</p>
+<h2 id="cgroup1和cgroup2"><a href="#cgroup1和cgroup2" class="headerlink" title="cgroup1和cgroup2"></a>cgroup1和cgroup2</h2><p>当前kernel中允许cgroup v1版本和v2版本共存。<br>Cgroup v2将多hierarchy的方式变成了unified hierarchy，并将所有的controller挂载到一个unified hierarchy。</p>
+</li>
+</ol>
+<p>主要改进：</p>
+<ul>
+<li>Cgroups v2 中所有的controller都会被挂载到一个unified hierarchy下，不在存在像v1中允许不同的controller挂载到不同的hierarchy的情况</li>
+<li>Process只能绑定到cgroup的根(<code>/</code>)目录和cgroup目录树中的叶子节点</li>
+<li>通过cgroup.controllers和cgroup.subtree_control指定哪些controller可以被使用</li>
+<li>v1版本中的task文件和cpuset controller中的cgroup.clone_children文件被移除</li>
+<li>当cgroup为空时的通知机制得到改进，通过cgroup.events文件通知</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="http://0pointer.de/blog/projects/cgroups-vs-cgroups.html">cgroups</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/resource_management_guide/index">Red Hat Enterprise Linux 7 的系统资源</a></li>
+<li><a href="https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html">Control Group v2</a></li>
+<li><a href="https://blog.51cto.com/u_15127564/2666789">浅谈Cgroups v2</a></li>
+<li><a href="https://www.infoq.cn/article/docker-kernel-knowledge-cgroups-resource-isolation/">Docker 背后的内核知识——cgroups 资源限制</a></li>
+<li><a href="https://www.lijiaocn.com/%E6%8A%80%E5%B7%A7/2019/01/28/linux-tool-cgroup-detail.html">Linux的cgroup功能（二）：资源限制cgroup v1和cgroup v2的详细介绍</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>Kubernetes</category>
+        <category>Docker</category>
+      </categories>
+      <tags>
+        <tag>linux</tag>
+        <tag>docker</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>存储之NFS</title>
+    <url>/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/</url>
+    <content><![CDATA[<h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>NFS(Network FileSystem)，可以通过网络，让不同的机器、不同的操作系统可以分享文件。可以看作是一个文件服务器(File Server)。</p>
+<p>NFS服务器可以将源成的NFS服务器分享的目录，挂载到客户端的机器中。当服务器端将系统目录分享出来后。其他客户端就可以将这个目录挂载到自己系统上的挂载点上。</p>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_server_client.png"></p>
+<p>NFS使用网络进行数据的传输，NFS服务端与客户端之间通过RPC。服务器在启动时，会随机取用数个端口，并主动向RPC注册。因此RPC可以知道每个端口的功能。客户端上，RPC固定使用111端口，来监听客户端的请求，并响应给客户端对应服务正确的端口。</p>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_rpc.png"></p>
+<h1 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h1><h2 id="安装配置NFS"><a href="#安装配置NFS" class="headerlink" title="安装配置NFS"></a>安装配置NFS</h2><ol>
+<li>安装NFS<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install nfs-utils rpcbind -y</span><br></pre></td></tr></table></figure></li>
+<li>创建共享目录<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># vim /etc/exports</span><br><span class="line"></span><br><span class="line">/usr/nfs  10.0.38.0/24(rw,no_root_squash,sync)</span><br><span class="line"></span><br><span class="line"># exportfs -r</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>exports文件说明：<br>内容格式应为： <code>&lt;输出目录&gt; [客户端](参数...) [客户端2](参数...)</code></p>
+<p>说明：</p>
+<ul>
+<li>输出目录：本地需要共享给客户端的文件夹路径</li>
+<li>客户端：<ul>
+<li>可以指定ip，如10.0.38.82</li>
+<li>可以指定子网，如10.0.38.0/24</li>
+<li>可以指定主机名</li>
+<li>可以指定域中的所有主机，如*.[域名]</li>
+<li>指定所有主机： *</li>
+</ul>
+</li>
+<li>可选参数之间用逗号分隔<table>
+<thead>
+<tr>
+<th>参数值</th>
+<th>内容说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>rw<br>ro</td>
+<td>该目录分享的权限是可读写(read-write)或只读(read-only)，但最终能不能读写，还是与文件系统的rwx及身份有关</td>
+</tr>
+<tr>
+<td>sync<br>async</td>
+<td>sync代表数据会同步写入到内存与硬盘中。async代表数据会先暂存于内存当中，而非直接写入硬盘</td>
+</tr>
+<tr>
+<td>no_root_squash<br>root_squash</td>
+<td>客户端使用NFS文件系统的账号若为root时，系统该如何判断这个账号的身份？预设的情况下，客户端root的身份会由root_squash的设定压缩成nfsnobody，如此对服务器的系统会交由保障。但如果想要开放客户端使用root身份来操作服务器的文件系统，那么就需要开no_root_squash才行</td>
+</tr>
+<tr>
+<td>all_squash</td>
+<td>不论登入NFS的使用者是什么身份，他的身份都会被压缩为匿名用户(nobody(nfsnobody))</td>
+</tr>
+<tr>
+<td>anonuid<br>anongid</td>
+<td>anon指anonymous(匿名者)。关于*_squash提到的匿名用户的UID设定值，通常为nobody(nfsnobody)，但是可以自行设定这个UID的值。当然，这个UID必须要存在于你的/etc/passwd当中。anonuid指的是UID而anongid则是群组的GID</td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+<ol start="3">
+<li>启动服务<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">systemctl start rpcbind &amp;&amp; systemctl enable rpcbind</span><br><span class="line">systemctl start nfs &amp;&amp; systemctl enable nfs</span><br></pre></td></tr></table></figure>
+通过showmount [-ae] [hostname|ip]查看共享目录</li>
+</ol>
+<ul>
+<li>-a:显示目前主机与客户端的NFS联机分享的状态</li>
+<li>-e:显示某主机的的/etc/exports所分享的目录数据</li>
+</ul>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs-show-mount.png"></p>
+<h1 id="k8s使用nfs-client-provisioner，创建PV和PVC"><a href="#k8s使用nfs-client-provisioner，创建PV和PVC" class="headerlink" title="k8s使用nfs-client-provisioner，创建PV和PVC"></a>k8s使用nfs-client-provisioner，创建PV和PVC</h1><p>nfs-client-provisioner使用现有的和已配置的NFS服务器来支持通过持久卷声明动态配置 Kubernetes 持久卷。其本身不提供NFS，需要现有的NFS服务器提供存储。</p>
+<ul>
+<li>PV以<code>&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
+<li>PV回收时以<code>archieved-&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
+</ul>
+<p>k8s部署nfs-client-provisioner的<a href="https://github.com/Owl0214/DevOps/tree/main/nfs">清单文件</a>：</p>
+<ul>
+<li>deployment需要修改NFS服务器地址，以及NFS共享路径</li>
+<li>官方配置说明参见<a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></li>
+</ul>
+<h2 id="使用NFS创建PV和PVC说明"><a href="#使用NFS创建PV和PVC说明" class="headerlink" title="使用NFS创建PV和PVC说明"></a>使用NFS创建PV和PVC说明</h2><ul>
+<li><p>k8s 创建PVC时，需指定<code>storageClassName</code>，其值与StorageClass中配置的name相同。</p>
+</li>
+<li><p>StorageClass中指定了<code>provisioner: fuseim.pri/ifs</code>。其中<code>fuseim.pri/ifs</code>与<code>PROVISIONER_NAME</code>相同</p>
+</li>
+<li><p>绑定PV如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">nfs:</span> </span><br><span class="line">                <span class="attr">server:</span> &#123;<span class="string">nfs-server-ip</span>&#125;</span><br><span class="line">                <span class="attr">path:</span> &#123;<span class="string">nfs-shared-filepath</span>&#125;    </span><br><span class="line"><span class="string">...</span></span><br></pre></td></tr></table></figure></li>
+<li><p>绑定PVC如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">                <span class="attr">claimName:</span> &#123;<span class="string">myapp-pvc</span>&#125;            </span><br><span class="line"><span class="string">...</span></span><br><span class="line"></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> &#123;<span class="string">myapp-pvc</span>&#125;</span><br><span class="line">  <span class="attr">namespace:</span> &#123;<span class="string">namespace</span>&#125;</span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">storageClassName:</span> &#123;<span class="string">StorageClass</span>&#125; <span class="comment"># StorageClass中配置的name</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteMany</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">1Gi</span> <span class="comment">#存储卷大小</span></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="参照"><a href="#参照" class="headerlink" title="参照"></a>参照</h1><p><a href="http://cn.linux.vbird.org/linux_server/0330nfs.php">鸟哥的Linux私房菜–NFS服务器</a><br><a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></p>
+]]></content>
+      <categories>
+        <category>Kubernetes</category>
+        <category>Storage</category>
+        <category>NFS</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>NFS</tag>
+      </tags>
+  </entry>
+</search>
