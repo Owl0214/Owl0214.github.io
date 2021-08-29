@@ -275,7 +275,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-        <h1 id="探针"><a href="#探针" class="headerlink" title="探针"></a>探针</h1><p>k8s提供了三种探针，确保容器在部署后处于运行状态，这三种探针分别是：**就绪检测探针(readinessProbe)<strong>、</strong>存活检测探针(livenessProbe)<strong>、</strong>启动检测探针(startupProbe)**。</p>
+        <h1 id="探针"><a href="#探针" class="headerlink" title="探针"></a>探针</h1><p>k8s提供了三种探针，确保容器在部署后处于运行状态，这三种探针分别是：<strong>就绪检测探针(readinessProbe)</strong> 、 <strong>存活检测探针(livenessProbe)</strong> 、 <strong>启动检测探针(startupProbe)</strong> 。</p>
 <ul>
 <li>livenessProbe用于检测容器是否处于健康状态，如果不健康，就<strong>删除重建</strong>。</li>
 <li>readinessProbe用于检测启动时，容器状态是否就绪，当容器状态就绪，才开始接收请求流量，否则会从对应的Endpoint列表中被剔除。</li>
