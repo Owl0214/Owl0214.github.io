@@ -177,6 +177,38 @@
       </tags>
   </entry>
   <entry>
+    <title>DevOps实战之部署ldap</title>
+    <url>/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/</url>
+    <content><![CDATA[<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
+<li>CentOS 7.6</li>
+<li>Kubernetes 1.18.15</li>
+<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3></li>
+<li>osixia/openldap stable</li>
+<li>osixia/phpldapadmin stable</li>
+</ul>
+<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="创建NFS共享目录"><a href="#创建NFS共享目录" class="headerlink" title="创建NFS共享目录"></a>创建NFS共享目录</h3><ol>
+<li>创建NFS服务</li>
+<li>依次创建目录</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">mkdir /usr/nfs/data/ldapdata</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/db</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/config</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/certs</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建ldap资源清单"><a href="#创建ldap资源清单" class="headerlink" title="创建ldap资源清单"></a>创建ldap资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/ldap">ldap资源清单</a></p>
+<h3 id="启动ldap和web管理页面"><a href="#启动ldap和web管理页面" class="headerlink" title="启动ldap和web管理页面"></a>启动ldap和web管理页面</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">kubectl apply ldap-deployment.yaml</span><br><span class="line">kubectl apply ldap-service.yaml</span><br><span class="line">kubectl apply phpldapadmin-deployment.yaml</span><br><span class="line">kubectl apply phpldapadmin-service.yaml</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/ldap-svc.png"></p>
+<h3 id="访问Web页面"><a href="#访问Web页面" class="headerlink" title="访问Web页面"></a>访问Web页面</h3><p>访问http://[NodeIp]:30080/</p>
+<p>默认用户名：cn=admin,dc=example,dc=org</p>
+<p>默认密码：admin</p>
+]]></content>
+      <categories>
+        <category>DevOps</category>
+      </categories>
+      <tags>
+        <tag>k8s</tag>
+        <tag>ldap</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>DevOps实战之部署SonarQube</title>
     <url>/2021/05/13/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2SonarQube/</url>
     <content><![CDATA[<h2 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h2><ol>
@@ -213,35 +245,98 @@
       </tags>
   </entry>
   <entry>
-    <title>DevOps实战之部署ldap</title>
-    <url>/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/</url>
-    <content><![CDATA[<h2 id="环境及镜像版本说明"><a href="#环境及镜像版本说明" class="headerlink" title="环境及镜像版本说明"></a>环境及镜像版本说明</h2><h3 id="基础环境"><a href="#基础环境" class="headerlink" title="基础环境"></a>基础环境</h3><ul>
-<li>CentOS 7.6</li>
-<li>Kubernetes 1.18.15</li>
-<li>Docker 19.03.9<h3 id="Docker-Image版本"><a href="#Docker-Image版本" class="headerlink" title="Docker Image版本"></a>Docker Image版本</h3></li>
-<li>osixia/openldap stable</li>
-<li>osixia/phpldapadmin stable</li>
-</ul>
-<h2 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h2><h3 id="创建NFS共享目录"><a href="#创建NFS共享目录" class="headerlink" title="创建NFS共享目录"></a>创建NFS共享目录</h3><ol>
-<li>创建NFS服务</li>
-<li>依次创建目录</li>
+    <title>存储之NFS</title>
+    <url>/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/</url>
+    <content><![CDATA[<h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>NFS(Network FileSystem)，可以通过网络，让不同的机器、不同的操作系统可以分享文件。可以看作是一个文件服务器(File Server)。</p>
+<p>NFS服务器可以将源成的NFS服务器分享的目录，挂载到客户端的机器中。当服务器端将系统目录分享出来后。其他客户端就可以将这个目录挂载到自己系统上的挂载点上。</p>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_server_client.png"></p>
+<p>NFS使用网络进行数据的传输，NFS服务端与客户端之间通过RPC。服务器在启动时，会随机取用数个端口，并主动向RPC注册。因此RPC可以知道每个端口的功能。客户端上，RPC固定使用111端口，来监听客户端的请求，并响应给客户端对应服务正确的端口。</p>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_rpc.png"></p>
+<h1 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h1><h2 id="安装配置NFS"><a href="#安装配置NFS" class="headerlink" title="安装配置NFS"></a>安装配置NFS</h2><ol>
+<li>安装NFS<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install nfs-utils rpcbind -y</span><br></pre></td></tr></table></figure></li>
+<li>创建共享目录<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># vim /etc/exports</span><br><span class="line"></span><br><span class="line">/usr/nfs  10.0.38.0/24(rw,no_root_squash,sync)</span><br><span class="line"></span><br><span class="line"># exportfs -r</span><br></pre></td></tr></table></figure></li>
 </ol>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">mkdir /usr/nfs/data/ldapdata</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/db</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/config</span><br><span class="line">mkdir /usr/nfs/data/ldapdata/certs</span><br></pre></td></tr></table></figure>
-
-<h3 id="创建ldap资源清单"><a href="#创建ldap资源清单" class="headerlink" title="创建ldap资源清单"></a>创建ldap资源清单</h3><p><a href="https://github.com/Owl0214/DevOps/tree/main/ldap">ldap资源清单</a></p>
-<h3 id="启动ldap和web管理页面"><a href="#启动ldap和web管理页面" class="headerlink" title="启动ldap和web管理页面"></a>启动ldap和web管理页面</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">kubectl apply ldap-deployment.yaml</span><br><span class="line">kubectl apply ldap-service.yaml</span><br><span class="line">kubectl apply phpldapadmin-deployment.yaml</span><br><span class="line">kubectl apply phpldapadmin-service.yaml</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2021/05/12/DevOps/DevOps%E5%AE%9E%E6%88%98%E4%B9%8B%E9%83%A8%E7%BD%B2ldap/ldap-svc.png"></p>
-<h3 id="访问Web页面"><a href="#访问Web页面" class="headerlink" title="访问Web页面"></a>访问Web页面</h3><p>访问http://[NodeIp]:30080/</p>
-<p>默认用户名：cn=admin,dc=example,dc=org</p>
-<p>默认密码：admin</p>
+<p>exports文件说明：<br>内容格式应为： <code>&lt;输出目录&gt; [客户端](参数...) [客户端2](参数...)</code></p>
+<p>说明：</p>
+<ul>
+<li>输出目录：本地需要共享给客户端的文件夹路径</li>
+<li>客户端：<ul>
+<li>可以指定ip，如10.0.38.82</li>
+<li>可以指定子网，如10.0.38.0/24</li>
+<li>可以指定主机名</li>
+<li>可以指定域中的所有主机，如*.[域名]</li>
+<li>指定所有主机： *</li>
+</ul>
+</li>
+<li>可选参数之间用逗号分隔<table>
+<thead>
+<tr>
+<th>参数值</th>
+<th>内容说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>rw<br>ro</td>
+<td>该目录分享的权限是可读写(read-write)或只读(read-only)，但最终能不能读写，还是与文件系统的rwx及身份有关</td>
+</tr>
+<tr>
+<td>sync<br>async</td>
+<td>sync代表数据会同步写入到内存与硬盘中。async代表数据会先暂存于内存当中，而非直接写入硬盘</td>
+</tr>
+<tr>
+<td>no_root_squash<br>root_squash</td>
+<td>客户端使用NFS文件系统的账号若为root时，系统该如何判断这个账号的身份？预设的情况下，客户端root的身份会由root_squash的设定压缩成nfsnobody，如此对服务器的系统会交由保障。但如果想要开放客户端使用root身份来操作服务器的文件系统，那么就需要开no_root_squash才行</td>
+</tr>
+<tr>
+<td>all_squash</td>
+<td>不论登入NFS的使用者是什么身份，他的身份都会被压缩为匿名用户(nobody(nfsnobody))</td>
+</tr>
+<tr>
+<td>anonuid<br>anongid</td>
+<td>anon指anonymous(匿名者)。关于*_squash提到的匿名用户的UID设定值，通常为nobody(nfsnobody)，但是可以自行设定这个UID的值。当然，这个UID必须要存在于你的/etc/passwd当中。anonuid指的是UID而anongid则是群组的GID</td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+<ol start="3">
+<li>启动服务<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">systemctl start rpcbind &amp;&amp; systemctl enable rpcbind</span><br><span class="line">systemctl start nfs &amp;&amp; systemctl enable nfs</span><br></pre></td></tr></table></figure>
+通过showmount [-ae] [hostname|ip]查看共享目录</li>
+</ol>
+<ul>
+<li>-a:显示目前主机与客户端的NFS联机分享的状态</li>
+<li>-e:显示某主机的的/etc/exports所分享的目录数据</li>
+</ul>
+<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs-show-mount.png"></p>
+<h1 id="k8s使用nfs-client-provisioner，创建PV和PVC"><a href="#k8s使用nfs-client-provisioner，创建PV和PVC" class="headerlink" title="k8s使用nfs-client-provisioner，创建PV和PVC"></a>k8s使用nfs-client-provisioner，创建PV和PVC</h1><p>nfs-client-provisioner使用现有的和已配置的NFS服务器来支持通过持久卷声明动态配置 Kubernetes 持久卷。其本身不提供NFS，需要现有的NFS服务器提供存储。</p>
+<ul>
+<li>PV以<code>&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
+<li>PV回收时以<code>archieved-&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
+</ul>
+<p>k8s部署nfs-client-provisioner的<a href="https://github.com/Owl0214/DevOps/tree/main/nfs">清单文件</a>：</p>
+<ul>
+<li>deployment需要修改NFS服务器地址，以及NFS共享路径</li>
+<li>官方配置说明参见<a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></li>
+</ul>
+<h2 id="使用NFS创建PV和PVC说明"><a href="#使用NFS创建PV和PVC说明" class="headerlink" title="使用NFS创建PV和PVC说明"></a>使用NFS创建PV和PVC说明</h2><ul>
+<li><p>k8s 创建PVC时，需指定<code>storageClassName</code>，其值与StorageClass中配置的name相同。</p>
+</li>
+<li><p>StorageClass中指定了<code>provisioner: fuseim.pri/ifs</code>。其中<code>fuseim.pri/ifs</code>与<code>PROVISIONER_NAME</code>相同</p>
+</li>
+<li><p>绑定PV如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">nfs:</span> </span><br><span class="line">                <span class="attr">server:</span> &#123;<span class="string">nfs-server-ip</span>&#125;</span><br><span class="line">                <span class="attr">path:</span> &#123;<span class="string">nfs-shared-filepath</span>&#125;    </span><br><span class="line"><span class="string">...</span></span><br></pre></td></tr></table></figure></li>
+<li><p>绑定PVC如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">                <span class="attr">claimName:</span> &#123;<span class="string">myapp-pvc</span>&#125;            </span><br><span class="line"><span class="string">...</span></span><br><span class="line"></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> &#123;<span class="string">myapp-pvc</span>&#125;</span><br><span class="line">  <span class="attr">namespace:</span> &#123;<span class="string">namespace</span>&#125;</span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">storageClassName:</span> &#123;<span class="string">StorageClass</span>&#125; <span class="comment"># StorageClass中配置的name</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteMany</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">1Gi</span> <span class="comment">#存储卷大小</span></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="参照"><a href="#参照" class="headerlink" title="参照"></a>参照</h1><p><a href="http://cn.linux.vbird.org/linux_server/0330nfs.php">鸟哥的Linux私房菜–NFS服务器</a><br><a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></p>
 ]]></content>
       <categories>
-        <category>DevOps</category>
+        <category>Kubernetes</category>
+        <category>Storage</category>
+        <category>NFS</category>
       </categories>
       <tags>
         <tag>k8s</tag>
-        <tag>ldap</tag>
+        <tag>NFS</tag>
       </tags>
   </entry>
   <entry>
@@ -645,7 +740,7 @@
   </entry>
   <entry>
     <title>apiserver启动分析</title>
-    <url>/2021/08/30/Kubernetes/K8S/kube-apiserver%E9%83%BD%E5%81%9A%E4%BA%86%E4%BA%9B%E5%95%A5/</url>
+    <url>/2021/08/30/Kubernetes/K8S/apiserver%E5%90%AF%E5%8A%A8%E5%88%86%E6%9E%90/</url>
     <content><![CDATA[<h1 id="kube-apiserver"><a href="#kube-apiserver" class="headerlink" title="kube-apiserver"></a>kube-apiserver</h1><p>apiserver是k8s的中心组件，它以RESTful API的形式提供了各类资源对象的操作接口。其他组件或者客户端(如kubectl)都会去调用它。apiserver支持同时提供https(默认监听6443端口)和http(默认监听8080端口)。其中http API是非安全结构，不做任何认证授权机制。</p>
 <p>它的主要功能是：</p>
 <ol>
@@ -935,101 +1030,6 @@ worker.stop()通过向worker的channel发送数据，通知其停止探针：<fi
         <tag>k8s</tag>
         <tag>Pod</tag>
         <tag>Container</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>存储之NFS</title>
-    <url>/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/</url>
-    <content><![CDATA[<h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>NFS(Network FileSystem)，可以通过网络，让不同的机器、不同的操作系统可以分享文件。可以看作是一个文件服务器(File Server)。</p>
-<p>NFS服务器可以将源成的NFS服务器分享的目录，挂载到客户端的机器中。当服务器端将系统目录分享出来后。其他客户端就可以将这个目录挂载到自己系统上的挂载点上。</p>
-<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_server_client.png"></p>
-<p>NFS使用网络进行数据的传输，NFS服务端与客户端之间通过RPC。服务器在启动时，会随机取用数个端口，并主动向RPC注册。因此RPC可以知道每个端口的功能。客户端上，RPC固定使用111端口，来监听客户端的请求，并响应给客户端对应服务正确的端口。</p>
-<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs_rpc.png"></p>
-<h1 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h1><h2 id="安装配置NFS"><a href="#安装配置NFS" class="headerlink" title="安装配置NFS"></a>安装配置NFS</h2><ol>
-<li>安装NFS<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install nfs-utils rpcbind -y</span><br></pre></td></tr></table></figure></li>
-<li>创建共享目录<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># vim /etc/exports</span><br><span class="line"></span><br><span class="line">/usr/nfs  10.0.38.0/24(rw,no_root_squash,sync)</span><br><span class="line"></span><br><span class="line"># exportfs -r</span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>exports文件说明：<br>内容格式应为： <code>&lt;输出目录&gt; [客户端](参数...) [客户端2](参数...)</code></p>
-<p>说明：</p>
-<ul>
-<li>输出目录：本地需要共享给客户端的文件夹路径</li>
-<li>客户端：<ul>
-<li>可以指定ip，如10.0.38.82</li>
-<li>可以指定子网，如10.0.38.0/24</li>
-<li>可以指定主机名</li>
-<li>可以指定域中的所有主机，如*.[域名]</li>
-<li>指定所有主机： *</li>
-</ul>
-</li>
-<li>可选参数之间用逗号分隔<table>
-<thead>
-<tr>
-<th>参数值</th>
-<th>内容说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>rw<br>ro</td>
-<td>该目录分享的权限是可读写(read-write)或只读(read-only)，但最终能不能读写，还是与文件系统的rwx及身份有关</td>
-</tr>
-<tr>
-<td>sync<br>async</td>
-<td>sync代表数据会同步写入到内存与硬盘中。async代表数据会先暂存于内存当中，而非直接写入硬盘</td>
-</tr>
-<tr>
-<td>no_root_squash<br>root_squash</td>
-<td>客户端使用NFS文件系统的账号若为root时，系统该如何判断这个账号的身份？预设的情况下，客户端root的身份会由root_squash的设定压缩成nfsnobody，如此对服务器的系统会交由保障。但如果想要开放客户端使用root身份来操作服务器的文件系统，那么就需要开no_root_squash才行</td>
-</tr>
-<tr>
-<td>all_squash</td>
-<td>不论登入NFS的使用者是什么身份，他的身份都会被压缩为匿名用户(nobody(nfsnobody))</td>
-</tr>
-<tr>
-<td>anonuid<br>anongid</td>
-<td>anon指anonymous(匿名者)。关于*_squash提到的匿名用户的UID设定值，通常为nobody(nfsnobody)，但是可以自行设定这个UID的值。当然，这个UID必须要存在于你的/etc/passwd当中。anonuid指的是UID而anongid则是群组的GID</td>
-</tr>
-</tbody></table>
-</li>
-</ul>
-<ol start="3">
-<li>启动服务<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">systemctl start rpcbind &amp;&amp; systemctl enable rpcbind</span><br><span class="line">systemctl start nfs &amp;&amp; systemctl enable nfs</span><br></pre></td></tr></table></figure>
-通过showmount [-ae] [hostname|ip]查看共享目录</li>
-</ol>
-<ul>
-<li>-a:显示目前主机与客户端的NFS联机分享的状态</li>
-<li>-e:显示某主机的的/etc/exports所分享的目录数据</li>
-</ul>
-<p><img src="/2021/05/22/Kubernetes/Storage/%E5%AD%98%E5%82%A8%E4%B9%8BNFS/nfs-show-mount.png"></p>
-<h1 id="k8s使用nfs-client-provisioner，创建PV和PVC"><a href="#k8s使用nfs-client-provisioner，创建PV和PVC" class="headerlink" title="k8s使用nfs-client-provisioner，创建PV和PVC"></a>k8s使用nfs-client-provisioner，创建PV和PVC</h1><p>nfs-client-provisioner使用现有的和已配置的NFS服务器来支持通过持久卷声明动态配置 Kubernetes 持久卷。其本身不提供NFS，需要现有的NFS服务器提供存储。</p>
-<ul>
-<li>PV以<code>&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
-<li>PV回收时以<code>archieved-&#123;namespace&#125;-&#123;pvcName&#125;-&#123;pvName&#125;</code>的命名格式提供</li>
-</ul>
-<p>k8s部署nfs-client-provisioner的<a href="https://github.com/Owl0214/DevOps/tree/main/nfs">清单文件</a>：</p>
-<ul>
-<li>deployment需要修改NFS服务器地址，以及NFS共享路径</li>
-<li>官方配置说明参见<a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></li>
-</ul>
-<h2 id="使用NFS创建PV和PVC说明"><a href="#使用NFS创建PV和PVC说明" class="headerlink" title="使用NFS创建PV和PVC说明"></a>使用NFS创建PV和PVC说明</h2><ul>
-<li><p>k8s 创建PVC时，需指定<code>storageClassName</code>，其值与StorageClass中配置的name相同。</p>
-</li>
-<li><p>StorageClass中指定了<code>provisioner: fuseim.pri/ifs</code>。其中<code>fuseim.pri/ifs</code>与<code>PROVISIONER_NAME</code>相同</p>
-</li>
-<li><p>绑定PV如下：</p>
-<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">nfs:</span> </span><br><span class="line">                <span class="attr">server:</span> &#123;<span class="string">nfs-server-ip</span>&#125;</span><br><span class="line">                <span class="attr">path:</span> &#123;<span class="string">nfs-shared-filepath</span>&#125;    </span><br><span class="line"><span class="string">...</span></span><br></pre></td></tr></table></figure></li>
-<li><p>绑定PVC如下：</p>
-<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="string">...</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">...</span></span><br><span class="line">          <span class="attr">volumeMounts:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">mountPath:</span> &#123;<span class="string">container-filepath</span>&#125;</span><br><span class="line">          <span class="attr">volumes:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">data</span></span><br><span class="line">              <span class="attr">persistentVolumeClaim:</span></span><br><span class="line">                <span class="attr">claimName:</span> &#123;<span class="string">myapp-pvc</span>&#125;            </span><br><span class="line"><span class="string">...</span></span><br><span class="line"></span><br><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">PersistentVolumeClaim</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> &#123;<span class="string">myapp-pvc</span>&#125;</span><br><span class="line">  <span class="attr">namespace:</span> &#123;<span class="string">namespace</span>&#125;</span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">storageClassName:</span> &#123;<span class="string">StorageClass</span>&#125; <span class="comment"># StorageClass中配置的name</span></span><br><span class="line">  <span class="attr">accessModes:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">ReadWriteMany</span></span><br><span class="line">  <span class="attr">resources:</span></span><br><span class="line">    <span class="attr">requests:</span></span><br><span class="line">      <span class="attr">storage:</span> <span class="string">1Gi</span> <span class="comment">#存储卷大小</span></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h1 id="参照"><a href="#参照" class="headerlink" title="参照"></a>参照</h1><p><a href="http://cn.linux.vbird.org/linux_server/0330nfs.php">鸟哥的Linux私房菜–NFS服务器</a><br><a href="https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner">NFS Ganesha server and external provisioner</a></p>
-]]></content>
-      <categories>
-        <category>Kubernetes</category>
-        <category>Storage</category>
-        <category>NFS</category>
-      </categories>
-      <tags>
-        <tag>k8s</tag>
-        <tag>NFS</tag>
       </tags>
   </entry>
 </search>
